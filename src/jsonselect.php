@@ -2,7 +2,7 @@
 /**
  * Implements JSONSelectors as described on http://jsonselect.org/
  *
- * 
+ *
  *
  * */
 
@@ -14,7 +14,7 @@ class JSONSelect {
     var $sel;
 
     function JSONSelect($expr){
-        
+
         $this->sel = $this->parse($expr);
 
     }
@@ -46,7 +46,7 @@ class JSONSelect {
     }
 
     // THE LEXER
-    var $toks = array( 
+    var $toks = array(
         'psc' => 1, // pseudo class
         'psf' => 2, // pseudo class function
         'typ' => 3, // type
@@ -55,7 +55,7 @@ class JSONSelect {
     );
 
     // The primary lexing regular expression in jsonselect
-    function pat(){ 
+    function pat(){
         return "/^(?:" .
         // (1) whitespace
         "([\\r\\n\\t\\ ]+)|" .
@@ -85,7 +85,7 @@ class JSONSelect {
         if (!$off) $off = 0;
         //var m = pat.exec(str.substr(off));
         preg_match($this->pat(), substr($str, $off), $m);
-        
+
         //echo "lex from $off ".print_r($m,true)."\n";
 
         if (!$m) return null;
@@ -107,7 +107,7 @@ class JSONSelect {
     // THE EXPRESSION SUBSYSTEM
 
     function exprPat() {
-            return 
+            return
             // skip and don't capture leading whitespace
             "/^\\s*(?:" .
             // (1) simple vals
@@ -126,8 +126,7 @@ class JSONSelect {
     }
 
     function operator($op,$ix){
-
-        $operators = array( 
+        $operators = array(
             '*' =>  array( 9, function($lhs, $rhs) { return $lhs * $rhs; } ),
             '/' =>  array( 9, function($lhs, $rhs) { return $lhs / $rhs; } ),
             '%' =>  array( 9, function($lhs, $rhs) { return $lhs % $rhs; } ),
@@ -143,7 +142,7 @@ class JSONSelect {
             '=' =>  array( 3, function($lhs, $rhs) { return $lhs === $rhs; } ),
             '!=' =>  array( 3, function($lhs, $rhs) { return $lhs !== $rhs; } ),
             '&&' =>  array( 2, function($lhs, $rhs) { return $lhs && $rhs; } ),
-            '||' =>  array( 1, function($lhs, $rhs) { return $lhs || $rhs; }) 
+            '||' =>  array( 1, function($lhs, $rhs) { return $lhs || $rhs; })
         );
         return $operators[$op][$ix];
     }
@@ -156,12 +155,12 @@ class JSONSelect {
             $off += strlen($m[0]);
             //$v = $m[1] || $m[2] || $m[3] || $m[5] || $m[6];
             foreach(array(1,2,3,5,6) as $k){
-                if(strlen($m[$k])>0){
+                if(isset($m[$k]) && strlen($m[$k])>0){
                     $v = $m[$k];
                     break;
                 }
             }
-            
+
             if (strlen($m[1]) || strlen($m[2]) || strlen($m[3])) return array($off, 0, json_decode($v));
             else if (strlen($m[4])) return array($off, 0, VALUE_PLACEHOLDER);
             return array($off, $v);
@@ -179,7 +178,7 @@ class JSONSelect {
             $p = $this->exprLex($str, $lhs[0]);
 
             //echo "exprLex2 ".print_r($p,true);
-            
+
             if (!$p || $p[1] !== ')') $this->te('epex', $str);
             $off = $p[0];
             $lhs = [ '(', $lhs[1] ];
@@ -213,7 +212,7 @@ class JSONSelect {
             // TODO: fix this, prob related due to $v copieeing $rhs instead of referencing
             //echo "re-arrange lhs:".print_r($lhs,true).' rhs: '.print_r($rhs,true);
             //print_r($rhs);
-            
+
             $v = &$rhs;
             while (is_array($rhs[0]) && $rhs[0][0] != '(' && $this->operator($op[1],0) >= $this->operator($rhs[0][1],0)) {
                 $rhs = &$rhs[0];
@@ -245,7 +244,7 @@ class JSONSelect {
         $lhs = $this->exprEval($expr[0], $x);
         $rhs = $this->exprEval($expr[2], $x);
         $op = $this->operator($expr[1],1);
-        
+
         return $op($lhs, $rhs);
     }
 
@@ -257,7 +256,7 @@ class JSONSelect {
         $a = array();
         $am=null;
         $readParen=null;
-        if (!$off) $off = 0; 
+        if (!$off) $off = 0;
 
         while (true) {
             //echo "parse round @$off\n";
@@ -368,18 +367,20 @@ class JSONSelect {
             $l = $this->lex($str, ($off = $l[0]));
         }
 
-        
+
 
         // now support either an id or a pc
         while (true) {
-            //echo "parse_selector:1 @$off  ".print_r($l,true)."\n";
+            // echo "parse_selector:1 @$off  ".print_r($s,true)."\n";
             if ($l === null) {
                 break;
             } else if ($l[1] === $this->toks['ide']) {
-                if ($s['id']) $this->te("nmi", $l[1]);
+                if (isset($s['id']) && $s['id']) $this->te("nmi", $l[1]);
                 $s[ 'id'] = $l[2];
             } else if ($l[1] === $this->toks['psc']) {
-                if ($s['pc'] || $s['pf']) $this->te("mpc", $l[1]);
+                if ((isset($s['pc']) && $s['pc']) || (isset($s['pf']) && $s['pf'])) {
+                    $this->te("mpc", $l[1]);
+                }
                 // collapse first-child and last-child into nth-child expressions
                 if ($l[2] === ":first-child") {
                     $s['pf'] = ":nth-child";
@@ -425,13 +426,13 @@ class JSONSelect {
                     $s['pf'] = $l[2];
                     //m = nthPat.exec(str.substr(l[0]));
                     preg_match($this->nthPat, substr($str, $l[0]), $m);
-                    
+
 
                     if (!$m) $this->te("mepf", $str);
-                    if (strlen($m[5])>0) {
+                    if (isset($m[5]) && strlen($m[5])>0) {
                         $s['a'] = 2;
                         $s['b'] = ($m[5] === "odd") ? 1 : 0;
-                    } else if (strlen($m[6])>0) {
+                    } else if (isset($m[6]) && strlen($m[6])>0) {
                         $s['a'] = 0;
                         $s['b'] = (int)$m[6];
                     } else {
@@ -510,8 +511,10 @@ class JSONSelect {
             $m = $this->exprEval($cs['expr'], $node);
         }
         // should we repeat this selector for descendants?
-        if ($sel[0] !== ">" && $sel[0]['pc'] !== ":root") $sels []= $sel;
-
+        if ($sel[0] !== ">" &&
+            (!isset($sel[0]['pc']) || $sel[0]['pc'] !== ":root")) {
+            $sels []= $sel;
+        }
         if ($m) {
             // is there a fragment that we should pass down?
             if ($sel[0] === ">") {
@@ -534,7 +537,7 @@ class JSONSelect {
         $call = false;
         $i = 0;
         $j = 0;
-        $k = 0; 
+        $k = 0;
         $x = 0;
         for ($i = 0; $i < sizeof($a); $i++) {
             $x = $this->mn($obj, $a[$i], $id, $num, $tot);
@@ -575,7 +578,7 @@ class JSONSelect {
 
     function match($obj){
         return $this->collect($this->sel[1], $obj);
-    } 
+    }
 
 
 }

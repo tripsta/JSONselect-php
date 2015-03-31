@@ -4,7 +4,6 @@ include("jsonselect.php");
 $testpath = "../JSONSelectTests/level_";
 
 foreach(array(1,2,3) as $level){
-
   foreach(glob($testpath.$level."/*.json") as $filename){
       echo "test with $filename\n---\n";
       $name = basename($filename);
@@ -16,13 +15,14 @@ foreach(array(1,2,3) as $level){
       $testdataStruct = json_decode($testdata);
 
       foreach(glob($testpath.$level."/".$group."*.selector") as $testfilename){
-         
+
           $selector = file_get_contents($testfilename);
 
           echo "\nWITH $selector\n";
 
           $expected_output = file_get_contents( preg_replace('/\.selector/','.output', $testfilename) );
-          $real_output = ""; 
+          $real_output = "";
+
           try{
             $parser= (new JSONSelect($selector));
             foreach($parser->match($testdataStruct) as $r){
@@ -43,7 +43,6 @@ foreach(array(1,2,3) as $level){
             echo "\n\n-actual:\n\n";
             echo $real_output."\n";
           }
-
       }
 
 
